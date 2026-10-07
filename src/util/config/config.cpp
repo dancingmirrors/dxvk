@@ -299,9 +299,13 @@ namespace dxvk {
       { "d3d11.cachedDynamicResources",       "vi" },
     }} },
     /* Final Fantasy XV: VXAO does thousands of   *
-     * draw calls with the same UAV bound         */
+     * draw calls with the same UAV bound. Also   *
+     * hangs the GPU (XID 109) on NVIDIA drivers  *
+     * when starting a new game if the raw        *
+     * access chains extension is enabled.        */
     { R"(\\ffxv_s\.exe$)", {{
       { "d3d11.relaxedGraphicsBarriers",    "True" },
+      { "dxvk.enableNvRawAccessChains",    "False" },
     }} },
     /* God of War - relies on NVAPI/AMDAGS for    *
      * barrier stuff, needs nvapi for DLSS        */
