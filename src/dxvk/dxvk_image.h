@@ -409,6 +409,7 @@ namespace dxvk {
 
     uint64_t                    m_fenceValue = 0;
     std::atomic<bool>           m_owned = { false };
+    std::atomic<bool>           m_timedOut = { false };
 
   };
 

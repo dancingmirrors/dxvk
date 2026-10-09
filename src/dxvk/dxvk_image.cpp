@@ -53,19 +53,36 @@ namespace dxvk {
 
 
   HRESULT DxvkKeyedMutex::AcquireSync(UINT64 key, DWORD  milliseconds) {
+    constexpr DWORD MaxWaitMs = 1000u;
+
     if (m_owned.load(std::memory_order_acquire))
       return DXGI_ERROR_INVALID_CALL;
 
+    DWORD waitMs = std::min(milliseconds, MaxWaitMs);
+
+    if (milliseconds > MaxWaitMs && m_timedOut.load(std::memory_order_relaxed))
+      waitMs = 0u;
+
+    // Relative timeouts are negative and in 100ns units
     LARGE_INTEGER timeout = { };
+    timeout.QuadPart = -10000ll * int64_t(waitMs);
+
     D3DKMT_ACQUIREKEYEDMUTEX acquire = { };
     acquire.hKeyedMutex = m_kmtLocal;
     acquire.Key = key;
     acquire.pTimeout = &timeout;
-    timeout.QuadPart = milliseconds * -10000;
 
     NTSTATUS status = D3DKMTAcquireKeyedMutex(&acquire);
-    if (status == STATUS_TIMEOUT)
+
+    if (status == STATUS_TIMEOUT) {
+      if (milliseconds > MaxWaitMs && !m_timedOut.exchange(true, std::memory_order_relaxed)) {
+        Logger::warn(str::format("DxvkKeyedMutex::AcquireSync: Key ", key,
+          " not available after ", MaxWaitMs, " ms, polling from now on"));
+      }
+
       return WAIT_TIMEOUT;
+    }
+
     if (status)
       return DXGI_ERROR_INVALID_CALL;
 
